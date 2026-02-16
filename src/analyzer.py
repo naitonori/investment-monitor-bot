@@ -84,7 +84,6 @@ class NewsAnalyzer:
             response = self.client.messages.create(
                 model=config.CLAUDE_MODEL,
                 max_tokens=300,
-                timeout=config.CLAUDE_TIMEOUT,
                 system=self.SYSTEM_PROMPT,
                 messages=[{"role": "user", "content": user_prompt}],
             )
