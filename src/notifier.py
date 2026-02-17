@@ -4,9 +4,12 @@ Verdict + Timeframe に応じた視覚的通知
 """
 import requests
 from typing import Dict
+from datetime import datetime, timezone, timedelta
 from loguru import logger
 from config import config
 from analyzer import AnalysisResult, Verdict, Timeframe
+
+JST = timezone(timedelta(hours=9))
 
 
 # === Icon Mapping ===
@@ -108,6 +111,16 @@ class DiscordNotifier:
                 },
             }
 
+            # 記事の公開日時（日本時間）
+            published_raw = news_item.get("published", "")
+            if published_raw:
+                pub_display = self._format_published(published_raw)
+                embed["fields"].append({
+                    "name": "\U0001f4c5 記事公開日時",
+                    "value": pub_display,
+                    "inline": True,
+                })
+
             # O'Neil advice
             if hasattr(analysis, "oneil_advice") and analysis.oneil_advice:
                 embed["fields"].append({
@@ -178,6 +191,30 @@ class DiscordNotifier:
         except Exception as e:
             logger.error(f"Unexpected Discord error: {e}")
             return False
+
+    def _format_published(self, published_str: str) -> str:
+        """公開日時を日本時間の読みやすい形式に変換"""
+        try:
+            from email.utils import parsedate_to_datetime
+            dt = parsedate_to_datetime(published_str)
+            dt_jst = dt.astimezone(JST)
+            return dt_jst.strftime("%m/%d %H:%M JST")
+        except Exception:
+            pass
+        try:
+            for fmt in ["%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ",
+                        "%Y-%m-%d %H:%M:%S"]:
+                try:
+                    dt = datetime.strptime(published_str, fmt)
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=timezone.utc)
+                    dt_jst = dt.astimezone(JST)
+                    return dt_jst.strftime("%m/%d %H:%M JST")
+                except ValueError:
+                    continue
+        except Exception:
+            pass
+        return published_str[:20]
 
     def health_check(self) -> bool:
         return bool(self.webhook_url)
