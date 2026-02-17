@@ -119,6 +119,15 @@ class DiscordNotifier:
                 },
             }
 
+            # 保有株アクション
+            holding_action = getattr(analysis, "holding_action", "") or ""
+            if holding_action:
+                embed["fields"].append({
+                    "name": "\U0001f3af 保有株アクション",
+                    "value": f"**{holding_action}**",
+                    "inline": True,
+                })
+
             # 記事の公開日時（日本時間）
             published_raw = news_item.get("published", "")
             if published_raw:

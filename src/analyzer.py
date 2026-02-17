@@ -30,6 +30,7 @@ class AnalysisResult(BaseModel):
     ticker: str = Field(description="銘柄名と証券コード（例: 東京応化工業(4186)）", max_length=100)
     verdict: Verdict = Field(description="投資判断")
     timeframe: Timeframe = Field(description="投資期間")
+    holding_action: str = Field(description="保有株への具体的アクション", max_length=100, default="")
     reason: str = Field(description="判断理由", max_length=200)
     oneil_advice: str = Field(description="オニールならどうするか", max_length=200)
 
@@ -70,9 +71,10 @@ class NewsAnalyzer:
 必ず以下のJSON形式のみで回答してください。それ以外のテキストは一切出力しないでください。
 
 {
-  "ticker": "銘柄名(証券コード)  例: 東京応化工業(4186)、三菱重工業(7011)。複数ある場合はカンマ区切り",
+  "ticker": "銘柄名(証券コード)",
   "verdict": "STRONG_BUY" | "BUY" | "WAIT" | "SELL",
   "timeframe": "DAY_TRADE" | "MID_LONG",
+  "holding_action": "保有株への具体的アクション（下記参照）",
   "reason": "このニュースでどの株が上がる/下がるか、1文で簡潔に（日本語）",
   "oneil_advice": "オニールならこう言う、という1文のアドバイス（日本語）"
 }
@@ -81,6 +83,16 @@ class NewsAnalyzer:
 - 必ず「銘柄名(証券コード)」の形式で書く。例: 東京応化工業(4186)
 - 該当する銘柄が複数あれば全て書く。例: 三菱重工業(7011), 川崎重工業(7012)
 - 証券コードがわからない場合は銘柄名だけでもOK
+
+【holding_action の書き方】
+保有株（川崎重工7012, 東京応化4186, 三菱重工7011）に関するニュースの場合:
+- "ホールド継続" : 中期で持ち続けてOK
+- "買い増し検討" : 押し目で追加購入チャンス
+- "即売り（損切り）" : 大暴落・不祥事等、すぐに手放すべき
+- "利確検討" : 十分利益が出ているなら利確タイミング
+- "寄りで売り" : デイトレ観点で翌朝寄り付きで売るべき
+- "様子見" : 方向感なし、焦る必要なし
+保有株に関係ないニュースの場合は空文字""でOK
 
 【verdict の判断基準】
 - STRONG_BUY: 市場がまだ織り込んでいないサプライズ材料。出来高急増が予想される。
@@ -225,6 +237,7 @@ class NewsAnalyzer:
                 ticker="不明",
                 verdict=verdict,
                 timeframe=timeframe,
+                holding_action="",
                 reason=reason or "分析結果を自動判定しました",
                 oneil_advice="オニール: 市場トレンドを確認してからエントリーせよ",
             )
