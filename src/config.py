@@ -89,7 +89,7 @@ class Config:
         self.RSS_FEEDS: List[str] = self._load_rss_feeds()
 
         # === Claude Model ===
-        self.CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-3-5-sonnet-latest")
+        self.CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-3-haiku-20240307")
 
         # === State File ===
         self.LAST_SEEN_FILE = os.getenv("LAST_SEEN_FILE", "last_seen.txt")
@@ -104,28 +104,33 @@ class Config:
 
         return [
             # === 日本国内メディア（日本語） ===
-            # Yahoo!ニュース - 経済（ロイター・時事・共同など総合配信）
+            # Yahoo!ニュース - ビジネス
             "https://news.yahoo.co.jp/rss/topics/business.xml",
-            "https://news.yahoo.co.jp/rss/topics/economy.xml",
+            # Yahoo!ニュース - ビジネス（カテゴリ版）
+            "https://news.yahoo.co.jp/rss/categories/business.xml",
             # 財経新聞（日本株専門、決算速報に強い）
             "https://www.zaikei.co.jp/rss/",
-            # 日本取引所グループ（JPX公式、適時開示）
-            "https://www.jpx.co.jp/corporate/news/news-releases/index.rss",
 
-            # === グローバルメディア（日本語翻訳版） ===
-            # Investing.com 日本株（世界のマーケット情報）
+            # === グローバルメディア（日本語） ===
+            # Investing.com 日本（世界のマーケット情報）
             "https://jp.investing.com/rss/news.rss",
-            # Bloomberg（グローバル経済ニュース）
-            "https://www.bloomberg.co.jp/feed/bview.rss",
+            # ロイター日本語（wor.jp経由）
+            "https://assets.wor.jp/rss/rdf/reuters/top.rdf",
+            # ITmedia ビジネス
+            "https://rss.itmedia.co.jp/rss/2.0/business_articles.xml",
 
-            # === 保有株専用フィード ===
-            "https://news.google.com/rss/search?q=東京応化OR4186&hl=ja&gl=JP&ceid=JP:ja",
-            "https://news.google.com/rss/search?q=三菱重工OR7011&hl=ja&gl=JP&ceid=JP:ja",
-            "https://news.google.com/rss/search?q=川崎重工OR7012&hl=ja&gl=JP&ceid=JP:ja",
-            "https://news.google.com/rss/search?q=三菱UFJOR8306&hl=ja&gl=JP&ceid=JP:ja",
+            # === 保有株専用フィード（URLエンコード済み） ===
+            "https://news.google.com/rss/search?q=%E6%9D%B1%E4%BA%AC%E5%BF%9C%E5%8C%96+OR+4186&hl=ja&gl=JP&ceid=JP:ja",
+            "https://news.google.com/rss/search?q=%E4%B8%89%E8%8F%B1%E9%87%8D%E5%B7%A5+OR+7011&hl=ja&gl=JP&ceid=JP:ja",
+            "https://news.google.com/rss/search?q=%E5%B7%9D%E5%B4%8E%E9%87%8D%E5%B7%A5+OR+7012&hl=ja&gl=JP&ceid=JP:ja",
+            "https://news.google.com/rss/search?q=%E4%B8%89%E8%8F%B1UFJ+OR+8306&hl=ja&gl=JP&ceid=JP:ja",
 
-            # === テーマ別（急騰材料） ===
-            "https://news.google.com/rss/search?q=半導体OR決算OR上方修正&hl=ja&gl=JP&ceid=JP:ja",
+            # === テーマ別（急騰材料）===
+            "https://news.google.com/rss/search?q=%E5%8D%8A%E5%B0%8E%E4%BD%93+OR+%E6%B1%BA%E7%AE%97+OR+%E4%B8%8A%E6%96%B9%E4%BF%AE%E6%AD%A3&hl=ja&gl=JP&ceid=JP:ja",
+            # 防衛・地政学テーマ
+            "https://news.google.com/rss/search?q=%E9%98%B2%E8%A1%9B+OR+%E9%98%B2%E8%A1%9B%E8%B2%BB&hl=ja&gl=JP&ceid=JP:ja",
+            # 日銀・金利テーマ
+            "https://news.google.com/rss/search?q=%E6%97%A5%E9%8A%80+OR+%E9%87%91%E5%88%A9+OR+%E5%88%A9%E4%B8%8A%E3%81%92&hl=ja&gl=JP&ceid=JP:ja",
         ]
 
     def _safe_int(self, key: str, default: int) -> int:
