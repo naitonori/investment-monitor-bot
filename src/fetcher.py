@@ -2,6 +2,7 @@
 News Fetcher Module - The Immortal Collector
 RSSからニュースを取得し、記事本文まで読み込む
 """
+import re
 import feedparser
 import requests
 from bs4 import BeautifulSoup
@@ -18,6 +19,7 @@ class NewsFetcher:
 
     def __init__(self):
         self.seen_urls: Set[str] = set()
+        self.seen_titles: Set[str] = set()
         self.last_seen_file = Path(config.LAST_SEEN_FILE)
         self._load_last_seen()
 
@@ -99,6 +101,11 @@ class NewsFetcher:
                     continue
 
                 title = entry.get("title", "No title")
+
+                # === 類似タイトルの重複スキップ ===
+                if self._is_duplicate_title(title):
+                    continue
+
                 summary = entry.get("summary", entry.get("description", ""))
                 published = entry.get("published", entry.get("updated", ""))
 
@@ -200,6 +207,26 @@ class NewsFetcher:
         except Exception as e:
             logger.warning(f"Failed to fetch article body: {e}")
             return ""
+
+    def _normalize_title(self, title: str) -> str:
+        """タイトルを正規化して比較用のキーを作る"""
+        # ソース名を除去: 「〜 - ロイター」「〜(共同通信)」「〜 | Bloomberg」
+        t = re.sub(r'\s*[-|｜]\s*[^-|｜]+$', '', title)
+        t = re.sub(r'\s*[（(][^）)]+[）)]\s*$', '', t)
+        # 空白・記号を除去して小文字化
+        t = re.sub(r'[\s　、。・！？!?,.\-:：【】「」『』\u3000]+', '', t)
+        return t.lower()[:40]
+
+    def _is_duplicate_title(self, title: str) -> bool:
+        """類似タイトルが既に処理済みかチェック"""
+        normalized = self._normalize_title(title)
+        if not normalized:
+            return False
+        if normalized in self.seen_titles:
+            logger.info(f"Duplicate skipped: {title[:50]}...")
+            return True
+        self.seen_titles.add(normalized)
+        return False
 
     def _is_recent(self, entry) -> bool:
         """24時間以内のニュースかどうかを判定する"""
