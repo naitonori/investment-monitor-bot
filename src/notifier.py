@@ -110,7 +110,7 @@ class DiscordNotifier:
                     },
                     {
                         "name": "\U0001f4f0 ニュース",
-                        "value": title[:120],
+                        "value": f"[{title[:100]}]({link})" if link else title[:120],
                         "inline": False,
                     },
                 ],
@@ -118,6 +118,14 @@ class DiscordNotifier:
                     "text": f"Keywords: {matched_kw[:80]} | Powered by Claude"
                 },
             }
+
+            # 情報源リンク
+            if link:
+                embed["fields"].append({
+                    "name": "\U0001f517 情報源",
+                    "value": link,
+                    "inline": False,
+                })
 
             # 保有株アクション
             holding_action = getattr(analysis, "holding_action", "") or ""
