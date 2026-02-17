@@ -7,6 +7,8 @@ import requests
 from bs4 import BeautifulSoup
 from typing import List, Dict, Set
 from pathlib import Path
+from datetime import datetime, timezone, timedelta
+from time import mktime
 from loguru import logger
 from config import config
 
@@ -90,6 +92,10 @@ class NewsFetcher:
             try:
                 url = entry.get("link", "")
                 if not url or url in self.seen_urls:
+                    continue
+
+                # === 24時間以内のニュースのみ通す ===
+                if not self._is_recent(entry):
                     continue
 
                 title = entry.get("title", "No title")
@@ -194,6 +200,26 @@ class NewsFetcher:
         except Exception as e:
             logger.warning(f"Failed to fetch article body: {e}")
             return ""
+
+    def _is_recent(self, entry) -> bool:
+        """24時間以内のニュースかどうかを判定する"""
+        try:
+            # feedparser が解析した日時構造体を使う
+            published_parsed = entry.get("published_parsed") or entry.get("updated_parsed")
+            if not published_parsed:
+                # 日時情報がない場合は通す（新着として扱う）
+                return True
+
+            entry_time = datetime.fromtimestamp(mktime(published_parsed), tz=timezone.utc)
+            now = datetime.now(timezone.utc)
+            age = now - entry_time
+
+            if age > timedelta(hours=24):
+                return False
+            return True
+        except Exception:
+            # パースに失敗したら通す（安全側に倒す）
+            return True
 
     def _find_matched_keywords(self, title: str, summary: str) -> List[str]:
         """Return list of keywords that matched in the text"""
