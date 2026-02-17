@@ -148,6 +148,14 @@ class DiscordNotifier:
                     "inline": False,
                 })
 
+            # SELL alert for holdings
+            if analysis.verdict == Verdict.SELL:
+                embed["fields"].append({
+                    "name": "\U0001f6a8 \u4fdd\u6709\u682a\u8b66\u544a",
+                    "value": "**\u2192 \u640d\u5207\u308a/\u5229\u78ba\u3092\u691c\u8a0e\u3057\u3066\u304f\u3060\u3055\u3044\uff01**",
+                    "inline": False,
+                })
+
             payload = {"embeds": [embed]}
             return self._send_webhook(payload)
 

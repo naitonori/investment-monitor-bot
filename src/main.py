@@ -142,6 +142,7 @@ class InvestmentMonitorBot:
                     self.stats["strong_buys"] += 1
 
                 # Skip WAIT notifications to reduce noise
+                # BUT always notify SELL (保有株の下落警告は必須)
                 if analysis.verdict == Verdict.WAIT:
                     logger.info("Verdict=WAIT - notification suppressed")
                     continue

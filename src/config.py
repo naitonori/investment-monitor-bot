@@ -23,6 +23,13 @@ class Config:
         self.CLAUDE_TIMEOUT = self._safe_int("CLAUDE_TIMEOUT", 30)
         self.HTTP_TIMEOUT = self._safe_int("HTTP_TIMEOUT", 15)
 
+        # === 保有銘柄（AI分析に渡す用） ===
+        self.HOLDINGS = [
+            {"name": "川崎重工業", "code": "7012"},
+            {"name": "東京応化工業", "code": "4186"},
+            {"name": "三菱重工業", "code": "7011"},
+        ]
+
         # === 1. 保有株リスト（防御・買い増し） ===
         # 東京応化工業 (4186): AI・半導体・微細化
         tokyo_ohka = [
