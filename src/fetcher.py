@@ -1,9 +1,10 @@
 """
 News Fetcher Module - The Immortal Collector
-ネットワークエラーがあっても絶対に停止しない
+RSSからニュースを取得し、記事本文まで読み込む
 """
 import feedparser
 import requests
+from bs4 import BeautifulSoup
 from typing import List, Dict, Set
 from pathlib import Path
 from loguru import logger
@@ -11,7 +12,7 @@ from config import config
 
 
 class NewsFetcher:
-    """Crash-resistant news fetcher with duplicate filtering and keyword categorization"""
+    """Crash-resistant news fetcher with article body extraction"""
 
     def __init__(self):
         self.seen_urls: Set[str] = set()
@@ -105,11 +106,15 @@ class NewsFetcher:
                     " ".join(matched_keywords)
                 )
 
+                # === 記事本文を取得 ===
+                article_body = self._fetch_article_body(url)
+
                 news_items.append({
                     "title": title,
                     "link": url,
                     "published": published,
                     "summary": summary[:500],
+                    "article_body": article_body,
                     "matched_keywords": ", ".join(matched_keywords),
                     "category": category,
                 })
@@ -122,6 +127,73 @@ class NewsFetcher:
                 continue
 
         return news_items
+
+    def _fetch_article_body(self, url: str) -> str:
+        """
+        記事のURLにアクセスして本文テキストを抽出する
+        失敗しても空文字を返す（絶対にクラッシュしない）
+        """
+        try:
+            response = requests.get(
+                url,
+                timeout=10,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/120.0.0.0 Safari/537.36"
+                },
+            )
+            response.raise_for_status()
+
+            soup = BeautifulSoup(response.text, "html.parser")
+
+            # 不要なタグを削除
+            for tag in soup.find_all(["script", "style", "nav", "header",
+                                       "footer", "aside", "iframe", "form"]):
+                tag.decompose()
+
+            # 記事本文を抽出（優先度順に検索）
+            article_text = ""
+
+            # 方法1: <article> タグ
+            article_tag = soup.find("article")
+            if article_tag:
+                article_text = article_tag.get_text(separator="\n", strip=True)
+
+            # 方法2: よくある記事クラス名
+            if not article_text:
+                for selector in [
+                    ".article-body", ".article_body", ".articleBody",
+                    ".entry-content", ".post-content", ".news-body",
+                    ".story-body", "#article-body", ".main-content",
+                    ".newsDetail", ".content-main",
+                ]:
+                    elem = soup.select_one(selector)
+                    if elem:
+                        article_text = elem.get_text(separator="\n", strip=True)
+                        break
+
+            # 方法3: <p> タグを全て取得
+            if not article_text:
+                paragraphs = soup.find_all("p")
+                texts = [p.get_text(strip=True) for p in paragraphs if len(p.get_text(strip=True)) > 20]
+                article_text = "\n".join(texts)
+
+            # 最大2000文字に制限（API コスト節約）
+            if article_text:
+                article_text = article_text[:2000]
+                logger.info(f"Article body extracted: {len(article_text)} chars")
+            else:
+                logger.info(f"No article body found for: {url[:50]}")
+
+            return article_text
+
+        except requests.Timeout:
+            logger.warning(f"Timeout fetching article: {url[:50]}")
+            return ""
+        except Exception as e:
+            logger.warning(f"Failed to fetch article body: {e}")
+            return ""
 
     def _find_matched_keywords(self, title: str, summary: str) -> List[str]:
         """Return list of keywords that matched in the text"""

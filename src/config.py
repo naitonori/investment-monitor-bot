@@ -103,12 +103,29 @@ class Config:
             return [f.strip() for f in custom_feeds.split(",") if f.strip()]
 
         return [
-            # Yahoo!ファイナンス 株式ニュース
-            "https://finance.yahoo.co.jp/rss/news?category=stock",
-            # 日経（Google News経由）
-            "https://news.google.com/rss/search?q=%E6%A0%AA%E5%BC%8F+%E6%B1%BA%E7%AE%97&hl=ja&gl=JP&ceid=JP:ja",
-            # ロイター ビジネス
-            "https://news.google.com/rss/search?q=%E6%97%A5%E6%9C%AC%E6%A0%AA+%E6%9D%90%E6%96%99&hl=ja&gl=JP&ceid=JP:ja",
+            # === 日本国内メディア（日本語） ===
+            # Yahoo!ニュース - 経済（ロイター・時事・共同など総合配信）
+            "https://news.yahoo.co.jp/rss/topics/business.xml",
+            "https://news.yahoo.co.jp/rss/topics/economy.xml",
+            # 財経新聞（日本株専門、決算速報に強い）
+            "https://www.zaikei.co.jp/rss/",
+            # 日本取引所グループ（JPX公式、適時開示）
+            "https://www.jpx.co.jp/corporate/news/news-releases/index.rss",
+
+            # === グローバルメディア（日本語翻訳版） ===
+            # Investing.com 日本株（世界のマーケット情報）
+            "https://jp.investing.com/rss/news.rss",
+            # Bloomberg（グローバル経済ニュース）
+            "https://www.bloomberg.co.jp/feed/bview.rss",
+
+            # === 保有株専用フィード ===
+            "https://news.google.com/rss/search?q=東京応化OR4186&hl=ja&gl=JP&ceid=JP:ja",
+            "https://news.google.com/rss/search?q=三菱重工OR7011&hl=ja&gl=JP&ceid=JP:ja",
+            "https://news.google.com/rss/search?q=川崎重工OR7012&hl=ja&gl=JP&ceid=JP:ja",
+            "https://news.google.com/rss/search?q=三菱UFJOR8306&hl=ja&gl=JP&ceid=JP:ja",
+
+            # === テーマ別（急騰材料） ===
+            "https://news.google.com/rss/search?q=半導体OR決算OR上方修正&hl=ja&gl=JP&ceid=JP:ja",
         ]
 
     def _safe_int(self, key: str, default: int) -> int:

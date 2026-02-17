@@ -1,6 +1,6 @@
 """
 AI Analyzer Module - The Brain (Claude-powered)
-Verdict (STRONG_BUY/BUY/WAIT/SELL) + Timeframe (DAY_TRADE/MID_LONG) を判定
+Verdict + Timeframe + O'Neil Advice
 """
 import json
 from enum import Enum
@@ -27,36 +27,55 @@ class Timeframe(str, Enum):
 
 class AnalysisResult(BaseModel):
     """AI分析の出力スキーマ"""
-    verdict: Verdict = Field(description="投資判断: STRONG_BUY, BUY, WAIT, SELL")
-    timeframe: Timeframe = Field(description="投資期間: DAY_TRADE(短期) or MID_LONG(中長期)")
-    reason: str = Field(description="判断理由を1文で簡潔に", max_length=200)
+    verdict: Verdict = Field(description="投資判断")
+    timeframe: Timeframe = Field(description="投資期間")
+    reason: str = Field(description="判断理由", max_length=200)
+    oneil_advice: str = Field(description="オニールならどうするか", max_length=200)
 
 
 # === Analyzer ===
 
 class NewsAnalyzer:
-    """Claude-powered analyzer with Verdict + Timeframe judgement"""
+    """Claude-powered analyzer with O'Neil perspective"""
 
-    SYSTEM_PROMPT = """あなたはプロのトレーダー兼投資アナリストです。
-日本株市場に精通しており、ニュースから瞬時に投資判断と最適な保有期間を判定できます。
+    SYSTEM_PROMPT = """あなたは日本株専門のプロトレーダーです。
+ニュース内容から「どの株が上がるか」「デイトレ向きか中期保有向きか」を即座に判断できます。
+
+さらに、あなたはウィリアム・オニール（CAN-SLIM投資法の創始者）の思考を完璧に理解しています。
+オニールなら、このニュースを見てどう行動するかを予想してアドバイスしてください。
+
+【オニールの基本原則（CAN-SLIM）】
+- C: Current Earnings（直近の四半期EPS成長率25%以上）
+- A: Annual Earnings（年間EPS成長率25%以上が3年以上）
+- N: New（新製品・新経営陣・新高値）
+- S: Supply and Demand（出来高の急増は機関投資家の参入サイン）
+- L: Leader or Laggard（業界のリーダー株を買え、出遅れ株は避けろ）
+- I: Institutional Sponsorship（優良ファンドが買っているか）
+- M: Market Direction（市場全体のトレンドに逆らうな）
+
+【オニールの損切りルール】
+- 買値から8%下落したら、理由を問わず損切り
+- 利益が出ている株は、20-25%で利確を検討
+- ただし大化け株は持ち続ける（利益を伸ばせ）
 
 必ず以下のJSON形式のみで回答してください。それ以外のテキストは一切出力しないでください。
 
 {
   "verdict": "STRONG_BUY" | "BUY" | "WAIT" | "SELL",
   "timeframe": "DAY_TRADE" | "MID_LONG",
-  "reason": "判断理由を1文で簡潔に（日本語）"
+  "reason": "このニュースでどの株が上がる/下がるか、1文で簡潔に（日本語）",
+  "oneil_advice": "オニールならこう言う、という1文のアドバイス（日本語）"
 }
 
 【verdict の判断基準】
-- STRONG_BUY: 上方修正、サプライズ決算、大型提携など、株価に強烈なインパクトがあるもの
-- BUY: 業績好調、増配、国策テーマなど、ポジティブだが緊急性は低いもの
-- WAIT: 判断材料不足、中立的なニュース
-- SELL: 業績悪化、不祥事、下方修正など、ネガティブなもの
+- STRONG_BUY: 市場がまだ織り込んでいないサプライズ材料。出来高急増が予想される。
+- BUY: ポジティブだが、すぐに飛び乗る必要はない。押し目で拾いたい水準。
+- WAIT: 材料不足、または既に織り込み済み。
+- SELL: ネガティブ材料。保有中なら損切り/利確を検討すべき。
 
 【timeframe の判断基準】
-- DAY_TRADE: 決算速報、上方修正、提携発表、突発的な材料など瞬発力があるもの。翌営業日のギャップアップ/ダウンが予想される場合はこちら。
-- MID_LONG: 国策（防衛費増額）、新工場建設、技術革新、業績の安定的拡大など。数週間〜数ヶ月の保有を推奨するもの。"""
+- DAY_TRADE: 翌営業日に値動きが集中するタイプの材料（決算速報、上方修正、提携発表、突発ニュース）
+- MID_LONG: 数週間〜数ヶ月かけてジワジワ効いてくるテーマ（国策、業界トレンド、構造変化）"""
 
     def __init__(self):
         if not config.ANTHROPIC_API_KEY:
@@ -73,17 +92,20 @@ class NewsAnalyzer:
 
         title = news_item.get("title", "")
         summary = news_item.get("summary", "")
+        article_body = news_item.get("article_body", "")
         category = news_item.get("category", "unknown")
         matched_kw = news_item.get("matched_keywords", "")
 
         logger.info(f"Analyzing: {title[:60]}...")
 
         try:
-            user_prompt = self._build_prompt(title, summary, category, matched_kw)
+            user_prompt = self._build_prompt(
+                title, summary, article_body, category, matched_kw
+            )
 
             response = self.client.messages.create(
                 model=config.CLAUDE_MODEL,
-                max_tokens=300,
+                max_tokens=400,
                 system=self.SYSTEM_PROMPT,
                 messages=[{"role": "user", "content": user_prompt}],
             )
@@ -108,12 +130,20 @@ class NewsAnalyzer:
             return None
 
     def _build_prompt(
-        self, title: str, summary: str, category: str, matched_kw: str
+        self, title: str, summary: str, article_body: str,
+        category: str, matched_kw: str
     ) -> str:
         category_label = (
             "【保有株関連ニュース】" if category == "portfolio"
             else "【新規チャンス候補】"
         )
+
+        body_section = ""
+        if article_body:
+            body_section = f"""
+【記事本文】
+{article_body}
+"""
 
         return f"""{category_label}
 
@@ -122,16 +152,16 @@ class NewsAnalyzer:
 
 【概要】
 {summary}
-
+{body_section}
 【マッチしたキーワード】
 {matched_kw}
 
-上記ニュースを分析し、投資判断(verdict)と最適な保有期間(timeframe)をJSON形式で回答してください。"""
+このニュースから、どの株が上がる可能性があるかを分析してください。
+デイトレ向きか中期保有向きかを判定し、オニール（CAN-SLIM）ならどうアドバイスするかを予想してください。"""
 
     def _parse_response(self, raw: str) -> Optional[AnalysisResult]:
         """Parse Claude's JSON response into AnalysisResult"""
         try:
-            # Extract JSON from response (handle markdown code blocks)
             json_str = raw
             if "```" in raw:
                 lines = raw.split("\n")
@@ -160,7 +190,6 @@ class NewsAnalyzer:
         try:
             raw_upper = raw.upper()
 
-            # Detect verdict
             if "STRONG_BUY" in raw_upper:
                 verdict = Verdict.STRONG_BUY
             elif "SELL" in raw_upper:
@@ -170,25 +199,18 @@ class NewsAnalyzer:
             else:
                 verdict = Verdict.WAIT
 
-            # Detect timeframe
             if "DAY_TRADE" in raw_upper:
                 timeframe = Timeframe.DAY_TRADE
             else:
                 timeframe = Timeframe.MID_LONG
 
-            # Extract reason
             reason = raw[:150].replace("\n", " ").strip()
-            for prefix in ["reason", "理由"]:
-                if prefix in raw.lower():
-                    parts = raw.split(":", 1)
-                    if len(parts) > 1:
-                        reason = parts[1].strip()[:150]
-                        break
 
             return AnalysisResult(
                 verdict=verdict,
                 timeframe=timeframe,
                 reason=reason or "分析結果を自動判定しました",
+                oneil_advice="オニール: 市場トレンドを確認してからエントリーせよ",
             )
         except Exception as e:
             logger.error(f"Fallback parse also failed: {e}")

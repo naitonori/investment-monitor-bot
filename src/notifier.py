@@ -108,6 +108,14 @@ class DiscordNotifier:
                 },
             }
 
+            # O'Neil advice
+            if hasattr(analysis, "oneil_advice") and analysis.oneil_advice:
+                embed["fields"].append({
+                    "name": "\U0001f4d6 O'Neil (CAN-SLIM)",
+                    "value": analysis.oneil_advice,
+                    "inline": False,
+                })
+
             # Add urgency note for STRONG_BUY + DAY_TRADE
             if (
                 analysis.verdict == Verdict.STRONG_BUY
