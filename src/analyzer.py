@@ -27,6 +27,7 @@ class Timeframe(str, Enum):
 
 class AnalysisResult(BaseModel):
     """AI分析の出力スキーマ"""
+    ticker: str = Field(description="銘柄名と証券コード（例: 東京応化工業(4186)）", max_length=100)
     verdict: Verdict = Field(description="投資判断")
     timeframe: Timeframe = Field(description="投資期間")
     reason: str = Field(description="判断理由", max_length=200)
@@ -61,11 +62,17 @@ class NewsAnalyzer:
 必ず以下のJSON形式のみで回答してください。それ以外のテキストは一切出力しないでください。
 
 {
+  "ticker": "銘柄名(証券コード)  例: 東京応化工業(4186)、三菱重工業(7011)。複数ある場合はカンマ区切り",
   "verdict": "STRONG_BUY" | "BUY" | "WAIT" | "SELL",
   "timeframe": "DAY_TRADE" | "MID_LONG",
   "reason": "このニュースでどの株が上がる/下がるか、1文で簡潔に（日本語）",
   "oneil_advice": "オニールならこう言う、という1文のアドバイス（日本語）"
 }
+
+【ticker の書き方】
+- 必ず「銘柄名(証券コード)」の形式で書く。例: 東京応化工業(4186)
+- 該当する銘柄が複数あれば全て書く。例: 三菱重工業(7011), 川崎重工業(7012)
+- 証券コードがわからない場合は銘柄名だけでもOK
 
 【verdict の判断基準】
 - STRONG_BUY: 市場がまだ織り込んでいないサプライズ材料。出来高急増が予想される。
@@ -105,7 +112,7 @@ class NewsAnalyzer:
 
             response = self.client.messages.create(
                 model=config.CLAUDE_MODEL,
-                max_tokens=400,
+                max_tokens=500,
                 system=self.SYSTEM_PROMPT,
                 messages=[{"role": "user", "content": user_prompt}],
             )
@@ -207,6 +214,7 @@ class NewsAnalyzer:
             reason = raw[:150].replace("\n", " ").strip()
 
             return AnalysisResult(
+                ticker="不明",
                 verdict=verdict,
                 timeframe=timeframe,
                 reason=reason or "分析結果を自動判定しました",

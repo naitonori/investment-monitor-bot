@@ -83,13 +83,21 @@ class DiscordNotifier:
             # Embed color
             color = VERDICT_COLORS.get(analysis.verdict, 0x888888)
 
+            # Ticker info
+            ticker = getattr(analysis, "ticker", "") or ""
+
             # Build Discord embed
             embed = {
-                "title": f"{timeframe_icon} {verdict_icon}: {title[:100]}",
-                "description": analysis.reason,
+                "title": f"{timeframe_icon} {verdict_icon}",
+                "description": f"**{ticker}**\n{analysis.reason}" if ticker else analysis.reason,
                 "url": link,
                 "color": color,
                 "fields": [
+                    {
+                        "name": "\U0001f4c8 銘柄",
+                        "value": f"**{ticker}**" if ticker else "---",
+                        "inline": True,
+                    },
                     {
                         "name": "Verdict",
                         "value": f"**{analysis.verdict.value}**",
@@ -101,9 +109,9 @@ class DiscordNotifier:
                         "inline": True,
                     },
                     {
-                        "name": "Category",
-                        "value": cat_label,
-                        "inline": True,
+                        "name": "\U0001f4f0 ニュース",
+                        "value": title[:120],
+                        "inline": False,
                     },
                 ],
                 "footer": {
