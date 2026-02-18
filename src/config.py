@@ -32,6 +32,7 @@ class Config:
 
         # === 1. 保有株リスト（防御・買い増し） ===
         # 東京応化工業 (4186): AI・半導体・微細化
+        # + グローバル半導体サプライチェーン連想キーワード
         tokyo_ohka = [
             "東京応化", "4186",
             "EUV", "極端紫外線",
@@ -40,7 +41,26 @@ class Config:
             "ラピダス", "2ナノ", "微細化",
             "HBM", "広帯域メモリ",
             "パッケージング", "3次元実装",
-            "SOX指数", "フィラデルフィア半導体"
+            "SOX指数", "フィラデルフィア半導体",
+            # === グローバル半導体（連想分析用） ===
+            "NVIDIA", "エヌビディア", "Jensen Huang",
+            "Intel", "インテル", "Pat Gelsinger",
+            "AMD", "リサ・スー", "Lisa Su",
+            "Qualcomm", "クアルコム",
+            "ASML", "EUV装置",
+            "Samsung", "サムスン半導体",
+            "Micron", "マイクロン",
+            "SK hynix", "SKハイニックス",
+            "Applied Materials", "東京エレクトロン", "8035",
+            "半導体製造装置", "ウェハ",
+            "AI半導体", "GPU", "データセンター",
+            "生成AI", "ChatGPT", "LLM", "OpenAI",
+            "CoWoS", "先端パッケージ",
+            "半導体規制", "対中規制", "輸出規制",
+            "CHIPS法", "半導体補助金",
+            "iPhone", "スマホ出荷", "PC出荷",
+            "メモリ在庫", "DRAM", "NAND",
+            "半導体市況", "シリコンサイクル",
         ]
 
         # 三菱重工・川崎重工: 国策・防衛・エネルギー
@@ -138,6 +158,16 @@ class Config:
             "https://news.google.com/rss/search?q=%E9%98%B2%E8%A1%9B+OR+%E9%98%B2%E8%A1%9B%E8%B2%BB&hl=ja&gl=JP&ceid=JP:ja",
             # 日銀・金利テーマ
             "https://news.google.com/rss/search?q=%E6%97%A5%E9%8A%80+OR+%E9%87%91%E5%88%A9+OR+%E5%88%A9%E4%B8%8A%E3%81%92&hl=ja&gl=JP&ceid=JP:ja",
+
+            # === グローバル半導体サプライチェーン（連想分析用）===
+            # NVIDIA / エヌビディア
+            "https://news.google.com/rss/search?q=NVIDIA%20OR%20%E3%82%A8%E3%83%8C%E3%83%93%E3%83%87%E3%82%A3%E3%82%A2&hl=ja&gl=JP&ceid=JP:ja",
+            # SOX指数 / フィラデルフィア半導体
+            "https://news.google.com/rss/search?q=SOX%E6%8C%87%E6%95%B0%20OR%20%E3%83%95%E3%82%A3%E3%83%A9%E3%83%87%E3%83%AB%E3%83%95%E3%82%A3%E3%82%A2%E5%8D%8A%E5%B0%8E%E4%BD%93&hl=ja&gl=JP&ceid=JP:ja",
+            # Intel / AMD / TSMC
+            "https://news.google.com/rss/search?q=Intel%20OR%20AMD%20OR%20TSMC%20%E5%8D%8A%E5%B0%8E%E4%BD%93&hl=ja&gl=JP&ceid=JP:ja",
+            # AI半導体 / GPU / データセンター
+            "https://news.google.com/rss/search?q=AI%E5%8D%8A%E5%B0%8E%E4%BD%93%20OR%20GPU%20OR%20%E3%83%87%E3%83%BC%E3%82%BF%E3%82%BB%E3%83%B3%E3%82%BF%E3%83%BC&hl=ja&gl=JP&ceid=JP:ja",
         ]
 
     def _safe_int(self, key: str, default: int) -> int:

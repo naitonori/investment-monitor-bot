@@ -6,10 +6,11 @@ import re
 import feedparser
 import requests
 from bs4 import BeautifulSoup
-from typing import List, Dict, Set
+from typing import List, Dict, Set, Optional
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from time import mktime
+from email.utils import parsedate_to_datetime
 from loguru import logger
 from config import config
 
@@ -82,22 +83,21 @@ class NewsFetcher:
     def _parse_sort_time(self, published_str: str) -> datetime:
         """ソート用に公開日時をパースする。失敗時は現在時刻を返す"""
         try:
-            from email.utils import parsedate_to_datetime
             return parsedate_to_datetime(published_str)
         except Exception:
             pass
-        try:
-            for fmt in ["%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ",
-                        "%Y-%m-%d %H:%M:%S"]:
-                try:
-                    dt = datetime.strptime(published_str, fmt)
-                    if dt.tzinfo is None:
-                        dt = dt.replace(tzinfo=timezone.utc)
-                    return dt
-                except ValueError:
-                    continue
-        except Exception:
-            pass
+        for fmt in ["%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ",
+                    "%Y-%m-%d %H:%M:%S", "%Y/%m/%d %H:%M",
+                    "%Y年%m月%d日 %H:%M", "%Y年%m月%d日"]:
+            try:
+                dt = datetime.strptime(published_str, fmt)
+                if dt.tzinfo is None:
+                    # タイムゾーンなし → JST とみなす
+                    jst = timezone(timedelta(hours=9))
+                    dt = dt.replace(tzinfo=jst)
+                return dt
+            except ValueError:
+                continue
         return datetime.now(timezone.utc)
 
     def _fetch_single_feed(self, feed_url: str) -> List[Dict[str, str]]:
@@ -252,34 +252,41 @@ class NewsFetcher:
         self.seen_titles.add(normalized)
         return False
 
-    # 一時フィルター: 2026-02-18 00:20 JST 以降のみ通す
-    # TODO: 2026-02-19 以降にこの行を削除して通常運用に戻す
-    _TEMP_CUTOFF = datetime(2026, 2, 17, 15, 20, tzinfo=timezone.utc)  # = 2/18 00:20 JST
-
     def _is_recent(self, entry) -> bool:
-        """24時間以内かつ一時カットオフ以降のニュースのみ通す"""
+        """24時間以内のニュースのみ通す（厳格な日付チェック）"""
         try:
             # feedparser が解析した日時構造体を使う
             published_parsed = entry.get("published_parsed") or entry.get("updated_parsed")
-            if not published_parsed:
-                # 日時情報がない場合は通す（新着として扱う）
-                return True
 
-            entry_time = datetime.fromtimestamp(mktime(published_parsed), tz=timezone.utc)
+            if not published_parsed:
+                # 日時情報がない場合: published / updated 文字列からもパース試行
+                pub_str = entry.get("published", "") or entry.get("updated", "")
+                if pub_str:
+                    entry_time = self._parse_sort_time(pub_str)
+                    # _parse_sort_time は失敗時に now() を返すのでそのまま通る
+                else:
+                    # 日時情報が一切ない → スキップ（古い記事の可能性が高い）
+                    logger.debug(f"No date info, skipping: {entry.get('title', '')[:40]}")
+                    return False
+            else:
+                entry_time = datetime.fromtimestamp(mktime(published_parsed), tz=timezone.utc)
+
             now = datetime.now(timezone.utc)
             age = now - entry_time
+
+            # 未来の日付（24時間以上先）もおかしいのでスキップ
+            if entry_time > now + timedelta(hours=2):
+                logger.debug(f"Future date skipped: {entry.get('title', '')[:40]}")
+                return False
 
             if age > timedelta(hours=24):
                 return False
 
-            # 一時フィルター: カットオフ以前のニュースをスキップ
-            if entry_time < self._TEMP_CUTOFF:
-                return False
-
             return True
-        except Exception:
-            # パースに失敗したら通す（安全側に倒す）
-            return True
+        except Exception as e:
+            # パースに失敗 → スキップ（安全側 = 古い記事を通さない）
+            logger.debug(f"Date parse failed, skipping: {e}")
+            return False
 
     def _find_matched_keywords(self, title: str, summary: str) -> List[str]:
         """Return list of keywords that matched in the text"""
